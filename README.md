@@ -11,6 +11,7 @@ A custom Home Assistant OS add-on that provides a local HTTP API to extract seve
 ## Setup
 Local setup managed with `uv`:
 ```bash
+cd ssocr_addon
 uv lock
 uv run scripts/train.py  # Run initial training if you don't already have `models/rf_model.joblib`
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8118
