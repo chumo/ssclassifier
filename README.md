@@ -13,7 +13,7 @@ Local setup managed with `uv`:
 ```bash
 uv lock
 uv run scripts/train.py  # Run initial training if you don't already have `models/rf_model.joblib`
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8118
 ```
 
 ## API Endpoints

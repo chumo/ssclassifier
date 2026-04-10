@@ -12,8 +12,8 @@ map:
 options: {}
 schema: {}
 ports:
-  8000/tcp: 8000
+  8118/tcp: 8118
 ports_description:
-  8000/tcp: "HTTP API Port"
-webui: "http://[HOST]:[PORT:8000]/"
+  8118/tcp: "HTTP API Port"
+webui: "http://[HOST]:[PORT:8118]/"
 image: "ssclassifier/{arch}"
