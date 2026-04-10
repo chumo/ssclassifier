@@ -23,3 +23,20 @@ def predict(features) -> str:
     # Scikit-learn expects 2D array, we must ensure it is [features]
     prediction = _model.predict([features])
     return str(prediction[0])
+
+def train_model(X, y):
+    """
+    Trains a new RandomForestClassifier on the provided features and labels.
+    X: list of feature arrays (each length 80)
+    y: list of string labels
+    """
+    global _model
+    clf = RandomForestClassifier(n_estimators=50, random_state=42)
+    clf.fit(X, y)
+    
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    joblib.dump(clf, MODEL_PATH)
+    
+    # Reload the model into memory
+    _model = clf
+    return len(y)

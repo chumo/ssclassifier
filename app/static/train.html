@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seven-Segment Model Trainer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --ring-color: rgba(59, 130, 246, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--bg-color), #020617);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1300px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* Glassmorphism Panel Base */
+        .glass-panel {
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-sizing: border-box;
+        }
+
+        h1, h2, h3 { margin-top: 0; }
+        p { color: var(--text-muted); line-height: 1.5; }
+
+        .header { margin-bottom: 20px; }
+        .header h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-success { background: var(--success); box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3); }
+        .btn-success:hover { background: var(--success-hover); }
+
+        .uploader { margin-bottom: 20px; }
+        .file-input { display: none; }
+        .upload-trigger { display: block; width: 100%; text-align: center; border: 2px dashed var(--border-color); padding: 24px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; color: var(--text-muted); box-sizing: border-box;}
+        .upload-trigger:hover { border-color: var(--primary); color: var(--primary); background: rgba(59, 130, 246, 0.05); }
+
+        .canvas-container {
+            width: 100%;
+            overflow: hidden;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: #000;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%; /* Automatically scale to fit container */
+            height: auto;
+            cursor: crosshair;
+        }
+
+        .sidebar { display: flex; flex-direction: column; gap: 20px; height: calc(100vh - 40px); position: sticky; top: 20px; }
+        .sidebar .glass-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        .sample-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+            flex: 1;
+            margin-bottom: 16px;
+        }
+        
+        .sample-list::-webkit-scrollbar { width: 6px; }
+        .sample-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        
+        .sample-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: fadeIn 0.3s ease;
+        }
+        .sample-item .label-badge { 
+            background: var(--primary); 
+            color: white; 
+            font-weight: 700; 
+            padding: 4px 12px; 
+            border-radius: 100px; 
+            font-size: 1.1rem;
+        }
+        .sample-item .info { font-size: 0.85rem; color: var(--text-muted); margin-left: 12px; flex: 1;}
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Modal styling */
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 100;
+        }
+        .modal-backdrop.active { opacity: 1; pointer-events: auto; }
+        
+        .modal-content {
+            background: #1e293b; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 24px; width: 300px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s;
+        }
+        .modal-backdrop.active .modal-content { transform: scale(1); }
+        
+        .modal-content input {
+            width: 100%; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm); color: white; font-size: 1.2rem; margin-top: 12px; text-align: center;
+            box-sizing: border-box;
+        }
+        .modal-content input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--ring-color); }
+        .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        
+        #toast {
+            position: fixed; bottom: 20px; right: 20px; background: var(--success); color: white;
+            padding: 12px 24px; border-radius: var(--radius-sm); font-weight: 500; z-index: 200;
+            transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Main Workspace -->
+    <div class="glass-panel">
+        <div class="header">
+            <h1>Seven-Segment OCR Trainer</h1>
+            <p>Upload an image from your hard disk, click 3 points to define a bounding box (Lower-Left, Lower-Right, Upper-Left), and immediately assign a label to it.</p>
+        </div>
+
+        <div class="uploader">
+            <label class="upload-trigger" for="file-upload" id="upload-label">
+                Drag & Drop or Click to Load an Image
+            </label>
+            <input type="file" id="file-upload" class="file-input" accept="image/png, image/jpeg, image/jpg" onchange="handleFileUpload(event)">
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Sidebar / Queue -->
+    <div class="sidebar">
+        <div class="glass-panel">
+            <h3>Training Queue</h3>
+            <p style="font-size: 0.85rem; margin-bottom: 16px;">Samples collected across all loaded images. When ready, train the model to save constraints.</p>
+            
+            <ul class="sample-list" id="queue-list">
+                <!-- Samples will appear here -->
+            </ul>
+
+            <button class="btn btn-success" style="width: 100%; padding: 14px; font-size: 1rem;" onclick="trainModel()" id="train-btn">
+                Train Model
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Label Modal -->
+<div class="modal-backdrop" id="label-modal">
+    <div class="modal-content">
+        <h3 style="margin: 0; font-size: 1.1rem;">Enter Digit Label</h3>
+        <input type="text" id="label-input" autocomplete="off" placeholder="e.g. 5" maxlength="3">
+        <div class="modal-actions">
+            <button class="btn" style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color);" onclick="cancelLabel()">Cancel</button>
+            <button class="btn" onclick="confirmLabel()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Model Trained Successfully!</div>
+
+<script>
+    const fileInput = document.getElementById('file-upload');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const queueList = document.getElementById('queue-list');
+    const labelModal = document.getElementById('label-modal');
+    const labelInput = document.getElementById('label-input');
+    const toast = document.getElementById('toast');
+
+    let currentImagePath = null;
+    let img = new Image();
+    let currentPoints = [];
+    
+    // Structure: { image_path: string, coords: [number...], label: string }
+    let trainingSamples = [];
+
+    // Scale tracking for responsive canvas
+    let renderScale = 1.0;
+
+    async function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        document.getElementById('upload-label').innerText = 'Uploading...';
+        
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                currentImagePath = data.path;
+                loadImageForCanvas(currentImagePath);
+                document.getElementById('upload-label').innerText = `Loaded: ${file.name} (Click to change)`;
+            } else {
+                alert("Upload failed: " + data.detail);
+                document.getElementById('upload-label').innerText = 'Drag & Drop or Click to Load an Image';
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error uploading image");
+        }
+    }
+
+    function loadImageForCanvas(path) {
+        img.src = '/image?path=' + encodeURIComponent(path) + '&t=' + Date.now();
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            draw();
+        };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (!currentImagePath || !img.src) return;
+
+        // Since canvas CSS width is 100%, we calculate the scale to get actual image coordinates
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
+        currentPoints.push({x, y});
+        draw();
+
+        if (currentPoints.length === 3) {
+            openLabelModal();
+        }
+    });
+
+    function draw() {
+        if (!img.src) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        // Draw already mapped samples for the CURRENT image
+        ctx.lineWidth = 2;
+        trainingSamples.forEach(sample => {
+            if (sample.image_path === currentImagePath) {
+                drawBoundingBox(sample.coords, 'rgba(16, 185, 129, 0.8)', '#10b981', sample.label);
+            }
+        });
+
+        // Draw currently defining points
+        ctx.fillStyle = '#3b82f6';
+        ctx.strokeStyle = '#3b82f6';
+        currentPoints.forEach((pt, idx) => {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 6, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Link them
+            if (idx > 0) {
+                const prev = currentPoints[idx - 1];
+                ctx.beginPath();
+                ctx.moveTo(prev.x, prev.y);
+                ctx.lineTo(pt.x, pt.y);
+                ctx.stroke();
+            }
+        });
+    }
+
+    function drawBoundingBox(coords, fillColor, strokeColor, label) {
+        const [px, py, vx, vy, wx, wy] = coords;
+        ctx.fillStyle = fillColor;
+        ctx.strokeStyle = strokeColor;
+        
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + vx, py + vy);
+        ctx.lineTo(px + vx + wx, py + vy + wy);
+        ctx.lineTo(px + wx, py + wy);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+        
+        if (label) {
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Inter';
+            ctx.fillText(label, px + vx/2 + wx/2 - 10, py + vy/2 + wy/2 + 10);
+        }
+    }
+
+    function openLabelModal() {
+        labelModal.classList.add('active');
+        labelInput.value = '';
+        setTimeout(() => labelInput.focus(), 100);
+    }
+    
+    labelInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') confirmLabel();
+        if (e.key === 'Escape') cancelLabel();
+    });
+
+    function cancelLabel() {
+        currentPoints = [];
+        labelModal.classList.remove('active');
+        draw();
+    }
+
+    function confirmLabel() {
+        const label = labelInput.value.trim();
+        if (!label) {
+            alert('Label cannot be empty');
+            return;
+        }
+
+        let p1 = currentPoints[0];
+        let p2 = currentPoints[1];
+        let p3 = currentPoints[2];
+
+        let vx = p2.x - p1.x;
+        let vy = p2.y - p1.y;
+        let wx = p3.x - p1.x;
+        let wy = p3.y - p1.y;
+
+        const coords = [p1.x, p1.y, vx, vy, wx, wy];
+        
+        trainingSamples.push({
+            image_path: currentImagePath,
+            coords: coords,
+            label: label
+        });
+
+        currentPoints = [];
+        labelModal.classList.remove('active');
+        
+        updateQueueUI();
+        draw();
+    }
+
+    function updateQueueUI() {
+        queueList.innerHTML = '';
+        trainingSamples.slice().reverse().forEach((s, idx) => {
+            const shortPath = s.image_path.split('/').pop();
+            const li = document.createElement('li');
+            li.className = 'sample-item';
+            li.innerHTML = `
+                <div class="label-badge">${s.label}</div>
+                <div class="info">
+                    <div><b>Img:</b> ${shortPath}</div>
+                    <div style="font-size: 0.75rem; opacity: 0.6; margin-top: 4px;">P:(${Math.round(s.coords[0])},${Math.round(s.coords[1])})</div>
+                </div>
+            `;
+            queueList.appendChild(li);
+        });
+    }
+
+    function showToast(msg) {
+        toast.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function trainModel() {
+        if (trainingSamples.length === 0) {
+            alert("Queue is empty. Please define at least one digit."); return;
+        }
+        
+        const btn = document.getElementById('train-btn');
+        btn.innerText = 'Training...';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch('/train', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ samples: trainingSamples })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showToast(data.message);
+                // Optionally clear logic if desired here
+                // trainingSamples = []; updateQueueUI(); draw();
+            } else {
+                alert("Training Failed: " + JSON.stringify(data.detail));
+            }
+        } catch(err) {
+            alert("Network error: " + err);
+        } finally {
+            btn.innerText = 'Train Model';
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
