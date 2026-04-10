@@ -2,7 +2,6 @@
 name = "ssclassifier"
 version = "0.1.0"
 description = "Home Assistant custom add-on for seven-segment OCR from image files."
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110.0",

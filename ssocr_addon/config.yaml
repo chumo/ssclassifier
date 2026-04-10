@@ -16,4 +16,3 @@ ports:
 ports_description:
   8118/tcp: "HTTP API Port"
 webui: "http://[HOST]:[PORT:8118]/"
-image: "ssclassifier/{arch}"

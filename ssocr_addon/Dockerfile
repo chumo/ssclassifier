@@ -17,15 +17,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
-# Install dependencies first (for docker layer caching)
+# Copy application files first so they are available for package build
 COPY pyproject.toml uv.lock* ./
-RUN uv pip install --system .
-
-# Copy application files
 COPY app /app/app
 COPY models /app/models
 COPY scripts /app/scripts
 COPY run.sh /app/run.sh
+
+# Install dependencies and the application package
+RUN uv pip install --system .
 
 RUN chmod a+x /app/run.sh
 
