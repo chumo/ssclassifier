@@ -1,0 +1,19 @@
+name: "Seven-Segment OCR"
+version: "1.0.0"
+slug: "ssocr_addon"
+description: "Exposes an HTTP API for seven-segment OCR from a saved image file."
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+map:
+  - share:rw
+options: {}
+schema: {}
+ports:
+  8000/tcp: 8000
+ports_description:
+  8000/tcp: "HTTP API Port"
+webui: "http://[HOST]:[PORT:8000]/"
+image: "ssclassifier/{arch}"

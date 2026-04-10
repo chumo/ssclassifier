@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seven-Segment OCR Interface</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .flex { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        canvas { border: 1px solid #ccc; cursor: crosshair; display: block; margin-top: 10px; }
+        #coords-display { white-space: pre-wrap; word-break: break-all; background: #f8f9fa; padding: 10px; border: 1px solid #ddd; }
+        .result-box { margin-top: 20px; padding: 15px; font-size: 1.2em; font-weight: bold; background: #d4edda; color: #155724; border-radius: 4px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Seven-Segment OCR Add-on</h1>
+        <p>Enter the path of the image saved by Home Assistant (e.g. <code>/share/cam.jpg</code>).</p>
+        <div class="flex">
+            <input type="text" id="image-path" value="/share/cam.jpg" placeholder="/share/cam.jpg">
+            <button onclick="loadImage()">Load Image</button>
+        </div>
+        
+        <p><strong>Instructions:</strong> Click 3 points on the image to define a digit's bounding box:
+            <ol>
+                <li>Lower-Left Corner (P)</li>
+                <li>Lower-Right Corner to define X vector</li>
+                <li>Upper-Left Corner to define Y vector</li>
+            </ol>
+            You can define multiple digits. When done, click "Detect".
+        </p>
+        
+        <canvas id="canvas"></canvas>
+        
+        <div style="margin-top:20px;">
+            <button onclick="clearPoints()" style="background: #dc3545;">Clear Points</button>
+            <button onclick="detectDigits()" style="background: #28a745;">Detect Digits</button>
+        </div>
+        
+        <div id="result" class="result-box"></div>
+        
+        <h3>Current Coords Payload</h3>
+        <pre id="coords-display">[]</pre>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let img = new Image();
+        let points = [];
+        let completedDigits = [];
+        let currentPath = "";
+
+        function loadImage() {
+            const path = document.getElementById('image-path').value;
+            currentPath = path;
+            img.src = "/image?path=" + encodeURIComponent(path);
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                draw();
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            points.push({x, y});
+            if (points.length === 3) {
+                // Compute vectors
+                let P = points[0];
+                let p2 = points[1]; // defines X direction
+                let p3 = points[2]; // defines Y direction
+                
+                let vx = p2.x - P.x;
+                let vy = p2.y - P.y;
+                let wx = p3.x - P.x;
+                let wy = p3.y - P.y;
+
+                completedDigits.push([P.x, P.y, vx, vy, wx, wy]);
+                points = [];
+                updateCoordsDisplay();
+            }
+            draw();
+        });
+
+        function clearPoints() {
+            points = [];
+            completedDigits = [];
+            updateCoordsDisplay();
+            draw();
+            document.getElementById('result').style.display = 'none';
+        }
+
+        function draw() {
+            if (!img.src) return;
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+
+            ctx.fillStyle = 'red';
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+
+            // Draw completed boxes
+            completedDigits.forEach(digit => {
+                let p = {x: digit[0], y: digit[1]};
+                let vx = digit[2], vy = digit[3];
+                let wx = digit[4], wy = digit[5];
+
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x + vx, p.y + vy);
+                ctx.lineTo(p.x + vx + wx, p.y + vy + wy);
+                ctx.lineTo(p.x + wx, p.y + wy);
+                ctx.closePath();
+                ctx.stroke();
+            });
+
+            // Draw current floating points
+            points.forEach(pt => {
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 4, 0, 2*Math.PI);
+                ctx.fill();
+            });
+        }
+
+        function updateCoordsDisplay() {
+            let flat = [];
+            completedDigits.forEach(d => { flat.push(...d); });
+            // round to 2 decimals
+            flat = flat.map(v => Math.round(v * 100) / 100);
+            document.getElementById('coords-display').innerText = JSON.stringify(flat);
+        }
+
+        async function detectDigits() {
+            if (completedDigits.length === 0) {
+                alert("Please select at least one digit."); return;
+            }
+            let flat = [];
+            completedDigits.forEach(d => { flat.push(...d); });
+            
+            const payload = {
+                image_path: currentPath,
+                coords: flat
+            };
+
+            const resDiv = document.getElementById('result');
+            resDiv.style.display = 'block';
+            resDiv.innerText = "Detecting...";
+            resDiv.style.background = "#fff3cd";
+            resDiv.style.color = "#856404";
+
+            try {
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    resDiv.innerText = "Detection Result: " + data.result;
+                    resDiv.style.background = "#d4edda";
+                    resDiv.style.color = "#155724";
+                } else {
+                    resDiv.innerText = "Error: " + JSON.stringify(data.detail);
+                    resDiv.style.background = "#f8d7da";
+                    resDiv.style.color = "#721c24";
+                }
+            } catch (err) {
+                resDiv.innerText = "Request failed: " + err;
+                resDiv.style.background = "#f8d7da";
+                resDiv.style.color = "#721c24";
+            }
+        }
+    </script>
+</body>
+</html>
